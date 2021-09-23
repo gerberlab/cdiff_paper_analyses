@@ -106,7 +106,7 @@ for model in args.models:
             if use_folds == 1:
                 f_folder = 'PredictiveAnalysisResults_Folds'
             else:
-                f_folder = 'PredictiveAnalysisResults_2'
+                f_folder = 'PredictiveAnalysisResults_wAge'
             if not os.path.isdir(f_folder):
                 os.mkdir(f_folder)
 

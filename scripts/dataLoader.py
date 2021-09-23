@@ -29,7 +29,7 @@ class dataLoader():
             df_demo = df_demo.rename(columns={col: col.split(' (')[0]})
 
         dem_covars = ['Age', 'Sex', 'Race', 'BMI','Smoking status','Prior PPI use', 'Drug', 'Toxin +']
-        clin_covars  = ['Prior PPI use', 'Drug', 'Toxin +']
+        clin_covars  = ['Age', 'Prior PPI use', 'Drug', 'Toxin +']
         # covars = ['Age', 'Sex', 'Race', 'BMI', 'Preceding Antibiotics', 'Prior PPI use', 'Hx of liver disease',
         #           'Smoking status',
         #           'History of IBS?', 'Baseline diarrhea or constipation', 'Frequency of baseline stools',
