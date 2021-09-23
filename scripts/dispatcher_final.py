@@ -60,7 +60,7 @@ echo $TMPDIR
 
 # Add your job command here
 
-cd /PHShome/jjd65/cdiff_finalizing/scripts
+cd /PHShome/jjd65/cdiff_analyses/scripts
 '''
 
 my_str_cox = '''python3 ./main_cox_fast.py -ix {0} -i {1} -o {2} -type {3} -week {4} -folds {5}'''
