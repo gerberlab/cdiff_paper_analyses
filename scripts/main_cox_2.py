@@ -275,6 +275,7 @@ if __name__ == "__main__":
         x, y, event_times = get_slope_data(dat_dict, args.week, log_transform = True)
     else:
         xls = None
+        xls_t = None
         if '_' in args.i:
             ii = args.i.split('_')
             xls = []
@@ -332,9 +333,9 @@ if __name__ == "__main__":
             # final_res_dict = train_cox(x)
 
     if xls is not None:
-        final_res_dict['data'] = (x, y, event_times)
-    else:
         final_res_dict['data'] = (xls_t, y, event_times)
+    else:
+        final_res_dict['data'] = (x, y, event_times)
 
     with open(path_out + args.type + '_ix_' + str(args.ix)+ '.pkl', 'wb') as f:
         pkl.dump(final_res_dict, f)
