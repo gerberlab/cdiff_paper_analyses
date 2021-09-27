@@ -18,7 +18,7 @@ from sklearn.model_selection import StratifiedKFold, GridSearchCV
 warnings.filterwarnings("ignore")
 
 
-def train_cox(x, y, event_times, xadd = None, outer_split = leave_two_out, inner_split = leave_two_out, num_folds = None,
+def train_cox(x, y, e_times, xadd = None, outer_split = leave_two_out, inner_split = leave_two_out, num_folds = None,
               meas_key = None, key = 'metabs'):
     if num_folds is None:
         print('none')
@@ -38,7 +38,7 @@ def train_cox(x, y, event_times, xadd = None, outer_split = leave_two_out, inner
         train_index, test_index = ix_in
         x_train, x_test = x.iloc[train_index, :], x.iloc[test_index, :]
         y_train, y_test = y[train_index], y[test_index]
-        e_train, e_test = event_times[train_index], event_times[test_index]
+        e_train, e_test = e_times[train_index], e_times[test_index]
         kk = key.split('_')[0]
         if (x_train<0).any().any() or kk == 'demo':
             x_train, x_test = filter_by_train_set(x_train,
@@ -180,8 +180,8 @@ def train_cox(x, y, event_times, xadd = None, outer_split = leave_two_out, inner
         ix_max = np.argmax(aucs_in)
         best_lamb = alphas[ix_max]
 
-        lambda_dict[ic_in] = {'best_lambda': best_lamb, 'scores': scores, 'event_outcomes':event_outcomes, 'times':event_times,
-                       'hazards':hazards, 'lambdas_tested': alphas}
+        lambda_dict[ic_in] = {'best_lambda': best_lamb, 'scores': scores, 'event_outcomes':event_outcomes, 'times':e_times,
+                       'lambdas_tested': alphas}
         model_out = CoxnetSurvivalAnalysis(l1_ratio = 1, alphas = alphas)
 
         model_out.fit(x_train, y_arr)
