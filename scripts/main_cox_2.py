@@ -43,13 +43,13 @@ def train_cox(x, y, e_times, xadd = None, outer_split = leave_two_out, inner_spl
         if (x_train<0).any().any() or kk == 'demo':
             x_train, x_test = filter_by_train_set(x_train,
                                                     x_test,
-                                                    meas_key, key = key, log_transform = False)
+                                                    meas_key, key = kk, log_transform = False)
         else:
             x_train, x_test = filter_by_train_set(x_train,
                                                     x_test,
-                                                    meas_key, key=key, log_transform=True)
+                                                    meas_key, key=kk, log_transform=True)
 
-        if np.sum(y_test.values)<1:
+        if np.sum(y_test)<1:
             continue
 
         if xadd is not None:
