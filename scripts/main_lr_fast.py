@@ -244,7 +244,7 @@ if __name__ == "__main__":
         if not os.path.isdir(args.o):
             os.mkdir(args.o)
     if args.i is None:
-        args.i = 'demo'
+        args.i = 'toxin'
     if args.type is None:
         args.type = 'coef'
     if args.week is None:

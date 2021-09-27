@@ -331,7 +331,7 @@ def get_epsilon(data):
     return epsilon
 
 def filter_by_train_set(x_train, x_test, meas_key, key = 'metabs', log_transform = True, standardize_data = True):
-    if key != 'demo':
+    if x_train.shape[1]>10:
         filt1 = filter_by_pt(x_train, perc=meas_key['pt_perc'][key], pt_thresh=meas_key['pt_tmpts'][key],
                              meas_thresh=meas_key['meas_thresh'][key], weeks=None)
         filt1_test = x_test[filt1.columns.values]
@@ -364,7 +364,7 @@ def filter_by_train_set(x_train, x_test, meas_key, key = 'metabs', log_transform
         xout.append(transformed)
     xtr, xtst = xout[0], xout[1]
 
-    if key != 'demo':
+    if x_train.shape[1]>10:
         filt2 = filter_vars(xtr, perc=meas_key['var_perc'][key], weeks = None)
     else:
         filt2 = xtr
@@ -922,10 +922,13 @@ def get_coefs(in_path, folder):
     if len(coef_res_dict[model].keys()) == 0:
         return
     if 'data' in coef_res_dict[model][0].keys():
-        try:
-            coef_names = coef_res_dict[model][0]['data'].columns.values[:-2]
-        except:
-            coef_names = coef_res_dict[model][0]['data'][0].columns.values
+        if isinstance(coef_res_dict[model][0]['data'][0], list):
+            coef_names = np.concatenate([x.columns.values for x in coef_res_dict[model][0]['data'][0]])
+        else:
+            try:
+                coef_names = coef_res_dict[model][0]['data'].columns.values[:-2]
+            except:
+                coef_names = coef_res_dict[model][0]['data'][0].columns.values
     else:
         coef_names = coef_res_dict[model][0]['x'].columns.values
     if 'outcome' in coef_names:
