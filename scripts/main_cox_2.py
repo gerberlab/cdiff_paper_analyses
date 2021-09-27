@@ -96,8 +96,8 @@ def train_cox(x, y, e_times, xadd = None, outer_split = leave_two_out, inner_spl
 
             train_ix, test_ix = ix_in2
             x_tr2, x_ts2 = x_train.iloc[train_ix, :], x_train.iloc[test_ix, :]
-            y_tr2, y_ts2 = y_train.iloc[train_ix], y_train.iloc[test_ix]
-            e_tr2, e_ts2 = e_train.iloc[train_ix], e_train.iloc[test_ix]
+            y_tr2, y_ts2 = y_train[train_ix], y_train[test_ix]
+            e_tr2, e_ts2 = e_train[train_ix], e_train[test_ix]
 
             if np.sum(y_tr2) < 1:
                 continue
