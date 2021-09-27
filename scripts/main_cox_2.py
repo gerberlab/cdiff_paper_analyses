@@ -39,6 +39,8 @@ def train_cox(x, y, e_times, xadd = None, outer_split = leave_two_out, inner_spl
         x_train, x_test = x.iloc[train_index, :], x.iloc[test_index, :]
         y_train, y_test = y[train_index], y[test_index]
         e_train, e_test = e_times[train_index], e_times[test_index]
+        if e_test.values[~y_test.astype(bool)]< e_test.values[y_test.astype(bool)]:
+            continue
         kk = key.split('_')[0]
         if (x_train<0).any().any() or kk == 'demo':
             x_train, x_test = filter_by_train_set(x_train,
@@ -99,6 +101,8 @@ def train_cox(x, y, e_times, xadd = None, outer_split = leave_two_out, inner_spl
             y_tr2, y_ts2 = y_train[train_ix], y_train[test_ix]
             e_tr2, e_ts2 = e_train[train_ix], e_train[test_ix]
 
+            if e_ts2.values[~y_ts2.astype(bool)] < e_ts2.values[y_ts2.astype(bool)]:
+                continue
             if np.sum(y_tr2) < 1:
                 continue
 
@@ -118,7 +122,6 @@ def train_cox(x, y, e_times, xadd = None, outer_split = leave_two_out, inner_spl
             try:
                 model2.fit(x_tr2, y_arr2)
             except:
-                print('removed alpha ' + str(alphas[0]))
                 alphas_n = np.delete(alphas, 0)
                 model2.set_params(alphas=alphas_n)
                 while(1):
@@ -127,7 +130,6 @@ def train_cox(x, y, e_times, xadd = None, outer_split = leave_two_out, inner_spl
                         alphas = alphas_n
                         break
                     except:
-                        print('removed alpha ' + str(alphas_n[0]))
                         alphas_n = np.delete(alphas, 0)
                         model2.set_params(alphas=alphas_n)
                     if len(alphas_n)<=2:
@@ -155,10 +157,6 @@ def train_cox(x, y, e_times, xadd = None, outer_split = leave_two_out, inner_spl
                         ci = concordance_index_censored(e_outcomes_dict[i][ic_in2].astype(bool), e_times_dict[i][ic_in2],
                                                                            hazards_dict[i][ic_in2])[0]
                     except:
-                        print('debug')
-                        print(y_ts2)
-                        print(e_ts2)
-                        print('')
                         continue
 
                     if not np.isnan(ci):
@@ -205,7 +203,10 @@ def train_cox(x, y, e_times, xadd = None, outer_split = leave_two_out, inner_spl
 
         model_out_dict[ic_in] = out_df
         if len(test_index) > 1:
-            ci = concordance_index_censored(y_test.astype(bool), e_test, risk_scores)[0]
+            try:
+                ci = concordance_index_censored(y_test.astype(bool), e_test, risk_scores)[0]
+            except:
+                print('debug')
             if not np.isnan(ci):
                 score_vec.append(ci)
 
@@ -247,7 +248,7 @@ if __name__ == "__main__":
         if not os.path.isdir(args.o):
             os.mkdir(args.o)
     if args.i is None:
-        args.i = 'metabs_16s_scfa_toxin_demo'
+        args.i = 'toxin'
     if args.type is None:
         args.type = 'auc'
     if args.week is None:
