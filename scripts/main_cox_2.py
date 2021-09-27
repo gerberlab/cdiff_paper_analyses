@@ -32,7 +32,7 @@ def train_cox(x, y, event_times, xadd = None, outer_split = leave_two_out, inner
     event_outcomes = []
     score_vec = []
     model_out_dict = {}
-    ix_inner = outer_split(x, x['outcome'], num_folds=100)
+    ix_inner = outer_split(x, y, num_folds=100)
     lambda_dict = {}
     for ic_in, ix_in in enumerate(ix_inner):
         train_index, test_index = ix_in
