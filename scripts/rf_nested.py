@@ -17,6 +17,8 @@ def run_rf(x,y,xadd = None, random_state = 0, n_estimators=[50,100], max_depth =
     model_out_dict = {}
     ix_inner = leave_one_out_cv(x,y)
     lambda_dict = {}
+    models_out = {}
+    coefs_out = {}
 
     for ic_in, ix_in in enumerate(ix_inner):
         train_index, test_index = ix_in
@@ -111,6 +113,8 @@ def run_rf(x,y,xadd = None, random_state = 0, n_estimators=[50,100], max_depth =
         out_df.loc[x_train.columns.values] = np.expand_dims(coefs,1)
 
         model_out_dict[ic_in] = out_df
+        models_out[ic_in] = model_out
+        coefs_out[ic_in] = x_train.columns.values
 
     score = sklearn.metrics.roc_auc_score(outcomes, probs)
 
@@ -120,6 +124,8 @@ def run_rf(x,y,xadd = None, random_state = 0, n_estimators=[50,100], max_depth =
     final_dict['probs'] = probs
     final_dict['outcomes'] = outcomes
     final_dict['lambdas'] = lambda_dict
+    final_dict['models_out'] = models_out
+    final_dict['coefs_out'] = coefs_out
     return final_dict
 if __name__ == "__main__":
 
