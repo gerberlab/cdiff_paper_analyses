@@ -1,18 +1,15 @@
-scripts/phylo_placement_filt_01
-scripts/phylo_placement_filt_005
-scripts/PredictiveAnalysisResults*
-scripts/inputs/DEseq2
-scripts/__pycache__
-scritps/FinalRuns*
-Fig5
-Tables
-univariate_analysis
-Fig3_results
-Fig2_results
-Fig2
-Fig1
-Fig4
-predictive_feature_tables
-dada2
-Fig3
+scripts/intputs/MS FE BANEG PeakPantheR
+*.ai
 *.pkl
+Fig*
+Final Figures.ipynb
+Get ML Tables.ipynb
+Analyses and Figures 1-3 Creation.ipynb
+Basic Data Methods.ipynb
+predictive_feature_tables
+RF_saved_model
+phylo_placement_filt_01
+supplemental_figures
+univariate_analysis
+scripts/inputs
+dada2/raw_data

@@ -271,9 +271,9 @@ class dataLoader():
             filt2 = transformed
         stand = standardize(filt2, override=True)
         # print(key + ', 2nd filter: ' + str(filt2.shape))
-        print(key)
-        print(filt1.shape)
-        print(filt2.shape)
+        # print(key)
+        # print(filt1.shape)
+        # print(filt2.shape)
         return stand
 
 

@@ -276,29 +276,6 @@ def dmatrix(data, metric='e'):
             vec[k] = custom_dist(data_s[i, :], data_s[j, :], metric)
     return vec
 
-
-# def get_vars(data, labels=None, weeks = [0,1,2]):
-#     if labels:
-#         cleared = data[np.array(labels) == 'Non-recurrer']
-#         recur = data[np.array(labels) == 'Recur']
-#         within_class_vars = [np.var(cleared, 0), np.var(recur, 0)]
-#         class_means = [np.mean(cleared, 0), np.mean(cleared, 0)]
-#
-#         total_mean = np.mean(data, 0)
-#         between_class_vars = 0
-#         for i in range(2):
-#             between_class_vars += (class_means[i] - total_mean)**2
-#
-#     else:
-#         within_class_vars = None
-#         between_class_vars = None
-#     if weeks:
-#         tmpt = [float(x.split('-')[1]) for x in data.index.values]
-#
-#     total_vars = np.std(data, 0)/np.abs(np.mean(data,0))
-#     vardict = {'within':within_class_vars,'between':between_class_vars,'total':total_vars}
-#     return vardict
-
 def filter_vars(data, perc=5, weeks = [0,1,2]):
 
     if weeks:
@@ -848,37 +825,8 @@ def split_to_folds(in_data, in_labels, folds=5, ddtype = 'week_one'):
             [np.where(patients == it)[0] for it in pts_train])
         ix_all.append((ix_tr, ix_ts))
     zip_ixs = ix_all
-    # If not, can use skf split
-    # else:
-    #     # patients = in_data.index.values
-    #     # for f in range(folds):
-
-    #     skf = StratifiedKFold(folds)
-    #     zip_ixs = skf.split(in_data, in_labels)
     return zip_ixs
 
-# def get_resdict_from_file(path):
-#     # path = 'out_test/'
-#     res_dict = {}
-#     for file in os.listdir(path):
-#         if file == '.DS_Store':
-#             continue
-#         key_name = file.split('.')[0].split('_')[0]
-#         seed = int(file.split('.')[0].split('_')[1])
-#         ix = int(file.split('.')[0].split('_')[2])
-#         with open(inner_path + file, 'rb') as f:
-#             # temp is a dictionary with parameter keys
-#             temp = pkl.load(f)
-#             if key_name not in res_dict.keys():
-#                 res_dict[key_name] = {}
-#             if ix not in res_dict[key_name].keys():
-#                 res_dict[key_name][ix] = {}
-#             for test_param in temp[ix].keys():
-#                 if test_param not in res_dict[key_name][ix].keys():
-#                     res_dict[key_name][ix][test_param] = {}
-#                 # res dict keys go model, held out test index, parameter to test, seed
-#                 res_dict[key_name][ix][test_param][seed] = temp[ix][test_param]
-#     return res_dict
 
 def get_best_param(res_dict, key_name):
     best_param = {}
@@ -922,13 +870,17 @@ def get_coefs(in_path, folder):
     if len(coef_res_dict[model].keys()) == 0:
         return
     if 'data' in coef_res_dict[model][0].keys():
-        if isinstance(coef_res_dict[model][0]['data'][0], list):
-            coef_names = np.concatenate([x.columns.values for x in coef_res_dict[model][0]['data'][0]])
-        else:
-            try:
-                coef_names = coef_res_dict[model][0]['data'].columns.values[:-2]
-            except:
+        if isinstance(coef_res_dict[model][0]['data'], tuple):
+            if isinstance(coef_res_dict[model][0]['data'][0], list):
+                coef_names = np.concatenate([x.columns.values for x in coef_res_dict[model][0]['data'][0]])
+            else:
                 coef_names = coef_res_dict[model][0]['data'][0].columns.values
+        else:
+            if isinstance(coef_res_dict[model][0]['data'], list):
+                coef_names = np.concatenate([x.columns.values for x in coef_res_dict[model][0]['data'].drop([
+                    'week', 'outcome'])], axis=1)
+            else:
+                coef_names = coef_res_dict[model][0]['data'].drop(['week', 'outcome'], axis=1).columns.values
     else:
         coef_names = coef_res_dict[model][0]['x'].columns.values
     if 'outcome' in coef_names:
@@ -951,12 +903,12 @@ def get_coefs(in_path, folder):
         try:
             try:
                 ix = np.argmax(list(zip(*[coef_res_dict[folder][0][m][i].coef_.shape for i in seeds]))[1])
-                coefs = coef_res_dict[model][0][m][ix].coef_
+                coefs = coef_res_dict[model][0][m][seeds[ix]].coef_
             except:
                 coefs = coef_res_dict[model][0][m][0].feature_importances_
         except:
             ix = np.argmax(list(zip(*[coef_res_dict[folder][0][m][i].shape for i in seeds]))[1])
-            coefs = coef_res_dict[model][0][m][ix]
+            coefs = coef_res_dict[model][0][m][seeds[ix]]
         if len(coefs.squeeze().shape) > 1:
             coef_arr = np.array([coef_res_dict[model][0][m][i].coef_[:, -1] for i in seeds]).squeeze()
         else:
@@ -982,6 +934,9 @@ def get_coefs(in_path, folder):
     lower_perc75, upper_perc75 = list(zip(*[(np.round(np.exp(get_percentiles(coef_arr[:, i], 75)), 8))
                                             for i in np.arange(coef_arr.shape[-1])]))
 
+    lower_perc50, upper_perc50 = list(zip(*[(np.round(np.exp(get_percentiles(coef_arr[:, i], 50)), 8))
+                                            for i in np.arange(coef_arr.shape[-1])]))
+
     median_lo = np.round(np.exp(median), 8)
     mad_lo = np.round(np.exp(mad), 8)
     med_cdi_lo = list(zip(lower, upper))
@@ -989,7 +944,8 @@ def get_coefs(in_path, folder):
                 # 'MAD interval': med_cdi_lo,
                 '95% Interval': list(zip(lower_perc, upper_perc)),
                 '90% Interval': list(zip(lower_perc90, upper_perc90)),
-                '75% Interval': list(zip(lower_perc75, upper_perc75))}
+                '75% Interval': list(zip(lower_perc75, upper_perc75)),
+                '50% Interval': list(zip(lower_perc50, upper_perc50))}
     coef_df = pd.DataFrame(fin_dict, index=coef_names)
 
     ix_median = np.argsort(-np.abs(median))
@@ -1077,36 +1033,6 @@ from matplotlib.patches import Ellipse, Rectangle
 
 
 # define an object that will be used by the legend
-class MulticolorPatch(object):
-    def __init__(self, colors, shapes):
-        self.colors = colors
-        self.shapes = shapes
-
-
-# define a handler for the MulticolorPatch object
-class MulticolorPatchHandler(object):
-    def legend_artist(self, legend, orig_handle, fontsize, handlebox):
-        width, height = handlebox.width, handlebox.height
-        patches = []
-        for i, c in enumerate(orig_handle.colors):
-            if orig_handle.shapes[i] == 's':
-                patches.append(Rectangle([width / len(orig_handle.colors) * i, 0],
-                                         width / len(orig_handle.colors),
-                                         height,
-                                         facecolor=c,
-                                         edgecolor='gray'))
-            else:
-                patches.append(
-                    Ellipse([(width / len(orig_handle.colors) * i) + width / len(orig_handle.colors) / 2, height / 2],
-                            width / len(orig_handle.colors),
-                            height,
-                            facecolor=c,
-                            edgecolor='gray'))
-
-        patch = PatchCollection(patches, match_original=True)
-
-        handlebox.add_artist(patch)
-        return patch
 
 def get_masked_arr(d, ix):
     da = d[ix,:]
@@ -1176,21 +1102,6 @@ def plot_metab_over_time(metab, pval, dat, path):
     plt.ylim([m_zero - .1, m_val + 1.1])
     plt.savefig(path + metab + '.pdf')
     plt.close()
-
-
-def get_data(key, dl, dtype='filtered_data', week=None, features=None):
-    data = dl.keys[key][dtype]
-    ix_keep = [ix for ix in data.index.values if ix.split('-')[1].isnumeric()]
-    if week == None:
-        ix_keep = [ix for ix in ix_keep if float(ix.split('-')[1]) <= 2]
-    else:
-        ix_keep = [ix for ix in ix_keep if float(ix.split('-')[1]) == week]
-
-    data = data.loc[ix_keep]
-    if features is not None:
-        data = data[features]
-    outcomes = dl.keys[key]['targets'].loc[ix_keep]
-    return data, outcomes
 
 def to_distance_matrix(tree):
     allclades = list(tree.find_clades(order="level"))

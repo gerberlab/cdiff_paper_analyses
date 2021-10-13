@@ -144,7 +144,7 @@ if __name__ == "__main__":
     if args.ix is None:
         args.ix = 0
     if args.o is None:
-        args.o = 'test_rf_fast'
+        args.o = 'test_rf'
         if not os.path.isdir(args.o):
             os.mkdir(args.o)
     if args.i is None:
