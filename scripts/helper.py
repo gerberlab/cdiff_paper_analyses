@@ -12,6 +12,8 @@ from collections import defaultdict
 import pickle as pkl
 from datetime import datetime
 from statsmodels.stats.multitest import multipletests
+from heatmaps_helper import *
+from basic_data_methods_helper import *
 
 def make_one_hot(x,l=None):
     if l is None:
@@ -752,24 +754,6 @@ def leave_one_out_cv(data, labels, folds = None, ddtype = 'week_one'):
         ix_all = (np.array(ix_all)[random_select]).tolist()
     return ix_all
 
-
-# def leave_two_out_combos(data, labels, num_folds=50):
-#     if isinstance(labels[0], str):
-#         cl = np.where(labels == 'Non-recurrer')[0]
-#         re = np.where(labels == 'Recurrer')[0]
-#     else:
-#         cl = np.where(labels == 0)[0]
-#         re = np.where(labels == 1)[0]
-#     ixs = np.arange(len(labels))
-#     left_out = [list(x) for x in list(itertools.product(cl, re))]
-#     ix_keep = [list(set(ixs)-set(l)) for l in left_out]
-#     if num_folds is None:
-#         ix_all = zip(np.array(ix_keep), np.array(left_out))
-#     else:
-#         ix_sampled = np.random.choice(np.arange(num_folds), num_folds)
-#         ix_all = zip(np.array(ix_keep)[ix_sampled], np.array(left_out)[ix_sampled])
-#     return ix_all
-
 def leave_two_out(data, labels, num_folds=50):
     if isinstance(labels[0], str):
         cl = np.where(labels == 'Non-recurrer')[0]
@@ -937,6 +921,10 @@ def get_coefs(in_path, folder):
     lower_perc50, upper_perc50 = list(zip(*[(np.round(np.exp(get_percentiles(coef_arr[:, i], 50)), 8))
                                             for i in np.arange(coef_arr.shape[-1])]))
 
+
+    lower_perc25, upper_perc25 = list(zip(*[(np.round(np.exp(get_percentiles(coef_arr[:, i], 25)), 8))
+                                            for i in np.arange(coef_arr.shape[-1])]))
+
     median_lo = np.round(np.exp(median), 8)
     mad_lo = np.round(np.exp(mad), 8)
     med_cdi_lo = list(zip(lower, upper))
@@ -945,7 +933,8 @@ def get_coefs(in_path, folder):
                 '95% Interval': list(zip(lower_perc, upper_perc)),
                 '90% Interval': list(zip(lower_perc90, upper_perc90)),
                 '75% Interval': list(zip(lower_perc75, upper_perc75)),
-                '50% Interval': list(zip(lower_perc50, upper_perc50))}
+                '50% Interval': list(zip(lower_perc50, upper_perc50)),
+                '25% Interval': list(zip(lower_perc25, upper_perc25))}
     coef_df = pd.DataFrame(fin_dict, index=coef_names)
 
     ix_median = np.argsort(-np.abs(median))

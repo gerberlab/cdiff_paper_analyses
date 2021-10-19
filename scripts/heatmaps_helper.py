@@ -1,4 +1,4 @@
-from pandas import pd
+import pandas as pd
 from helper import *
 from basic_data_methods_helper import *
 from matplotlib.collections import LineCollection

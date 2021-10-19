@@ -3,19 +3,24 @@ import pandas as pd
 import numpy as np
 
 class dataLoader():
-    def __init__(self, path = "inputs", filename_cdiff = "CDiffMetabolomics.xlsx",
-        filename_16s = 'seqtab-nochim-total.xlsx', filename_ba = 'MS FE BANEG PeakPantheR',
+    def __init__(self, path = "/Users/jendawk/Dropbox (MIT)/C Diff Recurrence Paper/Data/",
+                 filename_cdiff = "CDiffMetabolomics.xlsx",
+        filename_16s = 'seqtab-nochim-total.xlsx',
+                 # filename_ba = 'MS FE BANEG PeakPantheR',
             filename_toxin = 'Toxin B and C. difficile Isolation Results.xlsx',
-                 filename_CSgps = '20200120_HumanCarbonSourceMap.xlsx',
+                 # filename_CSgps = '20200120_HumanCarbonSourceMap.xlsx',
                  filename_scfa = 'PrecisionSCFAResultsHumanStool.xlsx',
-                 pt_perc = 0.25, meas_thresh = 10, var_perc = 5, pt_tmpts = 1):
+                 filename_demo = 'pt_demographics_full.xlsx',
+                 pt_perc = {'metabs': .25, '16s': .1, 'scfa': 0, 'toxin':0},
+                 meas_thresh = {'metabs': 0, '16s': 10, 'scfa': 0, 'toxin':0},
+                 var_perc={'metabs': 50, '16s': 5, 'scfa': 0, 'toxin':0}, pt_tmpts = 1):
         
         self.path = path
         self.filename_cdiff = filename_cdiff
         self.filename_16s = filename_16s
-        self.filename_ba = filename_ba
+        # self.filename_ba = filename_ba
         self.filename_toxin = filename_toxin
-        self.filename_CSgps = filename_CSgps
+        # self.filename_CSgps = filename_CSgps
         self.filename_scfa = filename_scfa
 
         self.pt_perc = pt_perc
@@ -23,18 +28,14 @@ class dataLoader():
         self.var_perc = var_perc
         self.pt_tmpts = pt_tmpts
 
-        df_demo = pd.read_excel('inputs/pt_demographics_full.xlsx', sheet_name = 'Sheet1', index_col = 0)
+        df_demo = pd.read_excel(path + '/' + filename_demo, sheet_name = 'Sheet1', index_col = 0)
         for col in df_demo.columns.values:
             df_demo = df_demo.rename(columns={col: col.split('  ')[0]})
             df_demo = df_demo.rename(columns={col: col.split(' (')[0]})
 
         dem_covars = ['Age', 'Sex', 'Race', 'BMI','Smoking status','Prior PPI use', 'Drug', 'Toxin +']
         clin_covars  = ['Age', 'Prior PPI use', 'Drug', 'Toxin +']
-        # covars = ['Age', 'Sex', 'Race', 'BMI', 'Preceding Antibiotics', 'Prior PPI use', 'Hx of liver disease',
-        #           'Smoking status',
-        #           'History of IBS?', 'Baseline diarrhea or constipation', 'Frequency of baseline stools',
-        #           'Cholesterol', 'Length of antibiotic treatment', 'Drug', 'Toxin +', 'PCR +',
-        #           'Previous CDI dx?']
+
         self.demographics = df_demo[dem_covars]
         self.clinical = df_demo[clin_covars]
         self.demographics.index = self.demographics.index.astype(str)
@@ -44,14 +45,15 @@ class dataLoader():
         self.clinical.Drug = self.clinical.Drug.replace('vanc', 0).replace('flagyl', 1)
 
         self.load_cdiff_data()
-        self.load_ba_data()
+        # self.load_ba_data()
         self.load_16s_data()
         self.load_SCFA_data()
         self.load_toxin_cdiff_data()
-        self.keys = {'metabs':self.cdiff_data_dict,'16s':self.data16s_dict,'bile_acids':self.ba_data,
+        self.keys = {'metabs':self.cdiff_data_dict,'16s':self.data16s_dict,
+                     # 'bile_acids':self.ba_data,
                      'scfa': self.data_scfa_dict, 'toxin':self.toxin_dict}
 
-        self.combos = ['metabs_16s','metabs_scfa','metabs_toxin']
+        self.combos = ['metabs_16s','metabs_16s_scfa','metabs_toxin']
         # self.week_one = {}
         # for key, value in keys.items():
         #     temp = self.get_week_x(value['data'],value['targets_by_pt'], week = 1)
@@ -125,25 +127,18 @@ class dataLoader():
                 self.week[ck][week]['x'] = pd.DataFrame(joint, index = ix_both, columns = cols)
                 self.week[ck][week]['y'] = self.week[ck.split('_')[0]][week]['y'][ix_pt]
                 self.week[ck][week]['event_times'] = self.week[ck.split('_')[0]][week]['event_times'][ix_pt]
-        # self.week['metabs_toxin']={}
-        # for week in [0,1,1.5,2,2.5,3,3.5,4]:
-        #     self.week['metabs_toxin'][week] = {}
-        #     df = self.week['metabs'][week]['x'].copy()
-        #     toxin_dat = standardize(self.toxin_data.loc[df.index.values,:])
-        #     self.week['metabs_toxin'][week]['x'] = pd.concat([df, toxin_dat], axis = 1)
-        #     self.week['metabs_toxin'][week]['y'] = self.week['metabs'][week]['y']
-        #     self.week['metabs_toxin'][week]['event_times'] = self.week['metabs'][week]['event_times']
 
 
     def load_cdiff_data(self):
         xl = pd.ExcelFile(self.path + '/' + self.filename_cdiff)
         self.cdiff_raw = xl.parse('OrigScale', header = None, index_col = None)
-        act_data = self.cdiff_raw.iloc[11:, 13:]
-        feature_header = self.cdiff_raw.iloc[11:, :13]
-        pt_header = self.cdiff_raw.iloc[:11,13:]
-        pt_names = list(self.cdiff_raw.iloc[:11,12])
-        pt_names[-1] = 'GROUP'
-        feat_names = list(self.cdiff_raw.iloc[10,:13])
+        ixs = np.where(self.cdiff_raw == 'MASS EXTRACTED')
+        ix_row, ix_col = ixs[0].item(), ixs[1].item()
+        act_data = self.cdiff_raw.iloc[ix_row + 2:, ix_col + 1:]
+        feature_header = self.cdiff_raw.iloc[ix_row+2:, :ix_col+1]
+        pt_header = self.cdiff_raw.iloc[:ix_row + 1, ix_col + 1:]
+        pt_names = list(self.cdiff_raw.iloc[:ix_row+1, ix_col])
+        feat_names = list(self.cdiff_raw.iloc[ix_row+1, :ix_col + 1])
         feat_names[-1] = 'HMDB'
 
         self.col_mat_mets = feature_header
@@ -189,7 +184,10 @@ class dataLoader():
     def load_SCFA_data(self):
         self.file_scfa = pd.ExcelFile(self.path + '/' + self.filename_scfa)
         raw_scfa = self.file_scfa.parse(skip_rows = 6, header = 6, index_col = 0)
-        sf_drop = raw_scfa.drop(['Crimson ID', 'Cdiff Cx', 'Sample Wt'], axis=1)
+        sf_drop = raw_scfa.copy()
+        for drop_row in ['Crimson ID', 'Cdiff Cx', 'Sample Wt']:
+            if drop_row in raw_scfa.columns.values:
+                sf_drop = sf_drop.drop(drop_row, axis=1)
         sf_drop = sf_drop.fillna(0)
         sf_drop = sf_drop.replace('not done',0).replace('no acids detected',0).astype('float')
         targets = {key: val for key, val in self.targets_dict.items() if key in sf_drop.index.values}
@@ -229,7 +227,8 @@ class dataLoader():
     def load_toxin_cdiff_data(self):
         self.toxin_fname = pd.ExcelFile(self.path + '/' + self.filename_toxin)
         self.toxin_data = self.toxin_fname.parse('ToxB',header = 4, index_col = 0)
-        self.toxin_data = self.toxin_data.drop('Crimson ID', axis=1)
+        if 'Crimson ID' in self.toxin_data.columns.values:
+            self.toxin_data = self.toxin_data.drop('Crimson ID', axis=1)
         self.toxin_data = ((self.toxin_data.replace(
             '+', 1)).replace('-', 0)).replace('<0.5', 0)
         self.toxin_data = self.toxin_data.replace(

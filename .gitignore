@@ -1,7 +1,6 @@
 scripts/intputs/MS FE BANEG PeakPantheR
 *.ai
 *.pkl
-Fig*
 Final Figures.ipynb
 Get ML Tables.ipynb
 Analyses and Figures 1-3 Creation.ipynb
@@ -9,7 +8,17 @@ Basic Data Methods.ipynb
 predictive_feature_tables
 RF_saved_model
 phylo_placement_filt_01
+phylo_placement_filt_005
 supplemental_figures
 univariate_analysis
 scripts/inputs
 dada2/raw_data
+Workspace.ipynb
+basic_data_methods.py
+Analysis_of_Normality.ipynb
+Best_Filtering_Params.ipynb
+scripts/dada2/raw_data
+Analyses and Figures 2,3, & 5
+output_figures
+output_tables
+output_tests
