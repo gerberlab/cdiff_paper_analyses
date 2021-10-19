@@ -22,3 +22,8 @@ Analyses and Figures 2,3, & 5
 output_figures
 output_tables
 output_tests
+scripts/main_lr_fast.py
+scripts/dispatcher_final.py
+scripts/main_cox_2.py
+scripts/test_dispatcher.py
+scripts/rf_nested.py
