@@ -1,7 +1,42 @@
+import scipy.stats as st
+from collections import Counter
+import sklearn
+from matplotlib import cm
+import scipy
+import  itertools
+from datetime import datetime
+from seaborn import clustermap
+from scipy.cluster.hierarchy import linkage
+import matplotlib as mpl
+from sklearn.linear_model import LogisticRegression
+import os
+import time
+import pickle as pkl
+import pandas as pd
+from dataLoader import *
+from basic_data_methods_helper import *
+from statsmodels.stats.multitest import multipletests
+from matplotlib.collections import LineCollection
+from Bio import Phylo
+import matplotlib.colors as colors
+import re
+from statistics import mode
+import seaborn as sns
+from sksurv.linear_model import CoxnetSurvivalAnalysis, CoxPHSurvivalAnalysis
+from sksurv.metrics import concordance_index_censored
+import matplotlib.lines as mlines
+import seaborn as sns
+import argparse
+
+# Set font for figures
+from matplotlib import rc
+rc('font',**{'family':'sans-serif','sans-serif':['Arial']})
+
 import pandas as pd
 from helper import *
 from basic_data_methods_helper import *
 from matplotlib.collections import LineCollection
+from matplotlib.colors import ListedColormap, LinearSegmentedColormap
 
 
 def get_data(key, dl, dtype='filtered_data', week=None, features=None):
@@ -19,7 +54,9 @@ def get_data(key, dl, dtype='filtered_data', week=None, features=None):
     return data, outcomes
 
 
-def make_side_heatmap(key, rownames, path_to_save, plot_padj=True):
+def make_side_heatmap(key, rownames,
+                      path_to_univariate_analysis= '/Users/jendawk/Dropbox (MIT)/C Diff Recurrence Paper/Analyses/univariate_analysis/',
+                      plot_padj=True):
     df = {}
     for week in [0, 1, 2]:
         if key == '16s' and isinstance(week, list):
@@ -30,13 +67,32 @@ def make_side_heatmap(key, rownames, path_to_save, plot_padj=True):
         else:
             test = 'ttest'
             pname = 'BH corrected'
-        univ_anal = pd.read_csv(path_to_save + 'univariate_analysis/' + key + '/' + test + '_' + key + str(week) +
+        univ_anal = pd.read_csv(path_to_univariate_analysis + '/' + key + '/' + test + '_' + key + str(week) +
                                 '.csv', index_col=0)
         #         df[week] = univ_anal.loc[univ_anal[pname]<0.1]
-        if plot_padj:
-            data_to_plot = univ_anal.iloc[:, [-3, -1]]
+        if 't-stat' in univ_anal.columns.values:
+            test_stat_lab = 't-stat'
+        elif 'test-statistic' in univ_anal.columns.values:
+            test_stat_lab = 'test-statistic'
+        elif 'test statistic' in univ_anal.columns.values:
+            test_stat_lab = 'test statistic'
+        elif 'log2fold' in univ_anal.columns.values:
+            test_stat_lab = 'log2fold'
         else:
-            data_to_plot = univ_anal.iloc[:, -1:]
+            print(univ_anal.columns.values)
+        if 'BH corrected' in univ_anal.columns.values:
+            p_lab = 'BH corrected'
+        elif 'BH Corrected' in univ_anal.columns.values:
+            p_lab = 'BH Corrected'
+        elif 'padj' in univ_anal.columns.values:
+            p_lab = 'padj'
+        else:
+            print(univ_anal.columns.values)
+
+        if plot_padj:
+            data_to_plot = univ_anal[[p_lab, test_stat_lab]]
+        else:
+            data_to_plot = univ_anal[test_stat_lab]
 
         not_present = list(set(rownames) - set(data_to_plot.index.values))
         for metab in not_present:
@@ -196,13 +252,30 @@ def make_metab_dendrogram(df_dendro, data, fig, ax, custom_order, skip_offset = 
 
 def plot_heatmap(key, rownames, fig, ax_heat, ax_side, dl, figsize=12 * 10, weeks=[0, 1, 2],
                  dtype='data',
-                 path_to_save='/Users/jendawk/Dropbox (MIT)/C Diff Recurrence Paper/Analyses/',
+                 path_to_univariate_analysis = '/Users/jendawk/Dropbox (MIT)/C Diff Recurrence Paper/Analyses/univariate_analysis/',
+                 path_to_save_data='/Users/jendawk/Dropbox (MIT)/C Diff Recurrence Paper/Main Figures/Figure Data/',
                  cmap_heat='vlag', cmap_sig='tab:purple'):
     df_side = make_side_heatmap(key, rownames,
-                                path_to_save, plot_padj=True)
+                                path_to_univariate_analysis, plot_padj=True)
     import matplotlib.colors as colors
     df_all = np.concatenate([df_side[i].iloc[:, 0].values for i in df_side.keys()])
     df_all = df_all[~np.isnan(df_all)]
+    vmins = []
+    vmaxs = []
+    for i, week in enumerate(weeks):
+        d_week, outcomes = get_data(key, dl, week=week, dtype=dtype, features=rownames)
+        if key == '16s':
+            data_week = np.divide(d_week.T, np.sum(d_week, 1)).T
+
+        else:
+            epsilon = get_epsilon(d_week)
+            transformed = np.log(d_week + epsilon)
+            d_week = standardize(transformed)
+        vmins.append(d_week.min().min())
+        vmaxs.append(d_week.max().max())
+
+    vmin = np.min(vmins)
+    vmax = np.max(vmaxs)
     for i, week in enumerate(weeks):
         d_week, outcomes = get_data(key, dl, week=week, dtype=dtype, features=rownames)
         if key == '16s':
@@ -234,13 +307,31 @@ def plot_heatmap(key, rownames, fig, ax_heat, ax_side, dl, figsize=12 * 10, week
         if i == 0:
             outcome_locs[0] = outcome_locs[0] - 2
             outcome_locs[1] = outcome_locs[1] + 2
+
+        if not os.path.isdir(path_to_save_data):
+            os.mkdir(path_to_save_data)
+        if os.path.isfile(path_to_save_data + '/' + 'Fig3_data.xlsx'):
+            with pd.ExcelWriter(path_to_save_data + '/' + 'Fig3_data.xlsx', mode='a') as writer:
+                data.to_excel(writer, sheet_name=key)
+        else:
+            with pd.ExcelWriter(path_to_save_data + '/' + 'Fig3_data.xlsx', mode = 'w') as writer:
+                data.to_excel(writer, sheet_name = key)
         if key != '16s':
-            pos = ax_heat[i].imshow(data, cmap=sns.color_palette(cmap_heat, as_cmap=True),
-                                    vmin=-4, vmax=4, interpolation='nearest', aspect='auto');
+            tmin, tmax, N = -2, 2, 512
+            lowval = N * (abs(vmin - tmin) / (vmax - vmin))
+            highval = N - N * (abs(vmax - tmax) / (vmax - vmin))
+            temp = sns.color_palette(cmap_heat, int(highval - lowval), as_cmap=True)
+            new_colors = np.zeros((N, 4))
+            new_colors[:int(N / 2), :] = temp(0.9999999)
+            new_colors[int(N / 2):, :] = temp(0)
+            new_colors[int(lowval):int(highval), :] = temp(np.linspace(1,0, int(highval) - int(lowval)))
+            new = ListedColormap(new_colors)
+            pos = ax_heat[i].imshow(data, cmap=new,
+                                    vmin=vmin, vmax=vmax, interpolation='nearest', aspect='auto');
         else:
             pos = ax_heat[i].imshow(data + 1, cmap=sns.light_palette(cmap_heat, as_cmap=True),
                                     interpolation='nearest', aspect='auto',
-                                    norm=colors.LogNorm(vmin=1, vmax=data.max().max()));
+                                    norm=colors.LogNorm(vmin=1, vmax=vmax));
 
         ax_heat[i].set_frame_on(False)
         ax_heat[i].axes.get_yaxis().set_visible(False)
@@ -253,10 +344,10 @@ def plot_heatmap(key, rownames, fig, ax_heat, ax_side, dl, figsize=12 * 10, week
         outcomes = np.expand_dims(outcomes, 0)
         ax_heat[i].set_xticks(outcome_locs)
         ax_heat[i].xaxis.tick_top()
-        if i == 0:
-            ax_heat[i].set_xticklabels(['Recurrer       ', 'Non-recurrer'], ha='center')
-        else:
-            ax_heat[i].set_xticklabels(['Recurrer  ', 'Non-recurrer'], ha='center')
+        # if i == 0:
+        #     ax_heat[i].set_xticklabels(['Recurrer       ', 'Non-recurrer'], ha='center')
+        # else:
+        ax_heat[i].set_xticklabels(['R', 'NR'], ha='center')
         ax_heat[i].tick_params(axis=u'both', which=u'both', length=0)
         colors2 = ['darkslategray', 'darkcyan']
 
@@ -267,20 +358,35 @@ def plot_heatmap(key, rownames, fig, ax_heat, ax_side, dl, figsize=12 * 10, week
 
         df_side[i].iloc[:, 0] = df_side[i].iloc[:, 0].fillna(1)
 
-        vmin = np.min(df_all)
-        vmax = np.max(df_all)
-        print(vmin)
-        vmin = 1e-4
-        right = ax_side[i].imshow(df_side[i].iloc[:, 0:1], interpolation='nearest', aspect='auto',
-                                  vmin=vmin, vmax=1, cmap=sns.light_palette(cmap_sig, reverse=True,
-                                                                            as_cmap=True),
-                                  norm=colors.LogNorm(vmin=1, vmax=data.max().max()))
 
-        labels = df_side[i].iloc[:, -1].copy()
-        labels[(df_side[i].iloc[:, -1] < 0) * (df_side[i].iloc[:, 0] <= 0.05)] = '\u2193'
-        labels[(df_side[i].iloc[:, -1] > 0) * (df_side[i].iloc[:, 0] <= 0.05)] = '\u2191'
-        labels[df_side[i].iloc[:, -1] == 0] = ''
-        labels[df_side[i].iloc[:, 0] > 0.05] = ''
+        right = ax_side[i].imshow(df_side[i].iloc[:, 0:1], interpolation='nearest', aspect='auto',
+                                  cmap=sns.light_palette(cmap_sig, reverse=True,
+                                                                            as_cmap=True),
+                                  norm=colors.LogNorm(vmin=1e-4, vmax=1))
+
+        if 't-stat' in df_side[i].columns.values:
+            test_stat_lab = 't-stat'
+        elif 'test-statistic' in df_side[i].columns.values:
+            test_stat_lab = 'test-statistic'
+        elif 'test statistic' in df_side[i].columns.values:
+            test_stat_lab = 'test statistic'
+        elif 'log2fold' in df_side[i].columns.values:
+            test_stat_lab = 'log2fold'
+        else:
+            print(df_side[i].columns.values)
+        if 'BH corrected' in df_side[i].columns.values:
+            p_lab = 'BH corrected'
+        elif 'BH Corrected' in df_side[i].columns.values:
+            p_lab = 'BH Corrected'
+        elif 'padj' in df_side[i].columns.values:
+            p_lab = 'padj'
+        else:
+            print(df_side[i].columns.values)
+        labels = df_side[i][test_stat_lab].copy()
+        labels[(df_side[i][test_stat_lab].astype('float64') < 0) * (df_side[i][p_lab].astype('float64') <= 0.05)] = '\u2193'
+        labels[(df_side[i][test_stat_lab].astype('float64') > 0) * (df_side[i][p_lab].astype('float64') <= 0.05)] = '\u2191'
+        labels[df_side[i][test_stat_lab].astype('float64') == 0] = ''
+        labels[df_side[i][p_lab].astype('float64') > 0.05] = ''
         labels[np.isnan(df_side[i].iloc[:, -1])] = ''
         ax_side[i].set_yticks(np.arange(df_side[i].shape[0]))
         ax_side[i].set_yticklabels(labels)
@@ -296,10 +402,13 @@ def plot_heatmap(key, rownames, fig, ax_heat, ax_side, dl, figsize=12 * 10, week
     return fig, ax_heat, ax_side, right, pos
 
 
-def lookup_by_names(tree, otu_dict, seq_to_otu, path_to_save, branch_len=0.1):
+def lookup_by_names(tree, otu_dict, seq_to_otu,
+                    path_to_univariate_analysis = '/Users/jendawk/Dropbox (MIT)/C Diff Recurrence Paper/Analyses/univariate_analysis/',
+                    filenames = 'deseq2_16s',
+                    branch_len=0.1):
     sub_gps_to_name = []
     for week in [0, 1, 2]:
-        univ_anal = pd.read_csv(path_to_save + 'univariate_analysis/16s/deseq2_16s' + str(week) +
+        univ_anal = pd.read_csv(path_to_univariate_analysis + '/16s/' + filenames + str(week) +
                                 '.csv', index_col=0)
         otus = univ_anal.index.values[univ_anal['padj'] < 0.1]
         sub_gps_to_name.extend(otus)
@@ -342,58 +451,136 @@ def lookup_by_names(tree, otu_dict, seq_to_otu, path_to_save, branch_len=0.1):
     return names
 
 
-def get_rownames(rownames):
-    slab = []
-    letter_len = 30
-    for r in rownames:
-        if '(' in r:
-            r = r.split(' (')[0]
-        r = r.replace('*','')
-        r = r.replace('beta','\u03B2')
-        xr = r.split('\n')
-        while any([len(xxr)>letter_len for xxr in xr]):
-            if ' ' in r and '\n' not in r:
-                tmp_spl = r.split(' ')
-                out = []
-                for tmp in tmp_spl:
-                    if len(tmp.split('\n')[-1])>=int(letter_len/2):
-                        out.append(tmp + '\n')
-                    else:
-                        out.append(tmp + ' ')
-                rtemp  = ''.join(out)
-                if rtemp[-1]==' ':
-                    rtemp = rtemp[:-1]
-                xr = r.split('\n')
-                if rtemp != r:
-                    r = rtemp
-                    continue
-            if '-' in r and '-\n' not in r:
-                tmp_spl = r.split('-')
-                out = []
-                for tmp in tmp_spl[:-1]:
-                    if len(tmp.split('\n')[-1])>=int(letter_len/2):
-                        out.append(tmp + '-\n')
-                    else:
-                        out.append(tmp + '-')
-                out.append(tmp_spl[-1])
-                rtemp  = ''.join(out)
-                xr = r.split('\n')
-                if rtemp != r:
-                    r = rtemp
-                    continue
-            rr = r.split('\n')
-            rout = []
-            for ii,ri in enumerate(rr):
-                if len(ri)>=letter_len:
-                    ri = ri[:int(len(ri)/2)] + '-\n' + ri[int(len(ri)/2):]
-                if ii != len(rr):
-                    rout.append(ri + '\n')
-                else:
-                    rout.append(ri)
-            r = ''.join(rout)
-            xr = r.split('\n')
-        r = r.replace('\n\n','')
-        if r[-1] == '\n':
-            r = r[:-1]
-        slab.append(r)
-    return slab
+if __name__ == "__main__":
+
+    # set data_path to point to directory with data
+    save_path = '/Users/jendawk/Dropbox (MIT)/C Diff Recurrence Paper/'
+
+    data_path = save_path + "Data/"
+
+    # Option to change filtering criteria
+    dl = dataLoader(path=data_path, pt_perc={'metabs': .25, '16s': .1, 'scfa': 0, 'toxin': 0}, meas_thresh=
+    {'metabs': 0, '16s': 10, 'scfa': 0, 'toxin': 0},
+                    var_perc={'metabs': 50, '16s': 5, 'scfa': 0, 'toxin': 0}, pt_tmpts=1)
+
+    path_to_save = '/Users/jendawk/Dropbox (MIT)/C Diff Recurrence Paper/Analyses/'
+
+    path_univariate = path_to_save + 'univariate_analysis/'
+
+    feats_dict_sm = {}
+    # feats_dict_labels = {}
+    for dtype in ['16s', 'metabs']:
+        feats = []
+        imp_feats = []
+        print(dtype)
+        univariate = path_to_save + 'univariate_analysis/'
+        for file in os.listdir(univariate + dtype):
+            if '.csv' not in file or 'ecurrer' in file:
+                continue
+            if dtype == '16s' and 'deseq2' not in file:
+                continue
+            if dtype == 'metabs' and 'ttest' not in file:
+                continue
+            pvals = pd.read_csv(path_univariate + dtype + '/' + file, index_col=[0])
+            if 'padj' in pvals.columns.values:
+                pa = 'padj'
+            else:
+                pa = 'BH corrected'
+            p_imp = pvals.index.values[pvals[pa] <= 0.05]
+            imp_feats.extend(p_imp)
+
+        feats_dict_sm[dtype] = np.unique(imp_feats)
+        print(len(np.unique(imp_feats)))
+        print('')
+
+    ratios = {}
+    for key in 'metabs', '16s', 'scfa':
+        data, _ = get_data(key, dl, dtype='filtered_data')
+        total = data.shape[0]
+        ratios[key] = {}
+        for week in [0, 1, 2]:
+            data, _ = get_data(key, dl, week=week, dtype='filtered_data')
+            ratios[key][week] = (data.shape[0] / total) * 14
+
+    fig, ax = plt.subplots(1, 10, gridspec_kw={'width_ratios': [2, 4, ratios['metabs'][0], 0.5, 0.15,
+                                                                ratios['metabs'][1], 0.5, 0.15, ratios['metabs'][2],
+                                                                0.5]},
+                           figsize=(7.5, 3.6875),
+                           constrained_layout=False)
+
+    set_font_sizes(None, {'font': 10, 'axes_title': 10, 'axes_label': 10,
+                          'xtick_label': 8.5, 'ytick_label': 8,
+                          'legend': 10, 'figure_title': 12})
+
+    # ax_metabs = ax[0,[1,3,5]]
+    # ax_dendro = ax[0,0]
+    # ax_top = ax[1,[1,3,5]]
+    # ax_side = ax[0,[2,4,6]]
+    # ax_inv = ax[1,[0,2,4,6]]
+
+    ax_metabs = ax[[2, 5, 8]]
+    ax_dendro = ax[0]
+    ax_side = ax[[3, 6, 9]]
+    ax_inv = ax[[0, 1, 3, 6, 9]]
+    ax_inv_bw = ax[[1, 4, 7]]
+
+    for axx in ax_inv_bw:
+        axx.set_visible(False)
+
+    weeks = [0, 1, 2]
+
+    custom_order = ['Hemoglobin and Porphyrin Metabolism', 'Secondary Bile Acid Metabolism',
+                    ['Progestin Steroids', 'Estrogenic Steroids', 'Androgenic Steroids', 'Corticosteroids'],
+                    'Endocannabinoid', ['Phosphatidylcholine (PC)', 'Lysophospholipid'],
+                    'Sphingomyelins', 'Urea cycle; Arginine and Proline Metabolism', 'Carbohydrate',
+                    'Food Component/Plant',
+                    ['Drug - Antibiotic', 'Drug - Analgesics, Anesthetics']]
+    # custom_order = np.flip(custom_order)
+
+    col_mat_df = dl.col_mat_mets
+    col_mat_sorted = col_mat_df.sort_values(by=['SUPER_PATHWAY', 'SUB_PATHWAY'])
+    biochem_sorted = col_mat_sorted.index.values
+    df_dendro = col_mat_sorted[['SUPER_PATHWAY', 'SUB_PATHWAY']].astype('category')
+
+    # df_dendro = df_dendro.replace('Partially Characterized Molecules','Partially \nCharacterized \nMolecules')
+    # df_dendro = df_dendro.replace('Cofactors and Vitamins', 'Cofactors \nand \nVitamins')
+
+    dat, _ = get_data('metabs', dl, dtype='data', features=feats_dict_sm['metabs'])
+
+    fig, ax_dendro, order_dict, pathways = make_metab_dendrogram(df_dendro, dat, fig, ax_dendro, custom_order)
+    rownames = np.concatenate([order_dict[path] for path in pathways])
+    # rownames = np.flip(rownames)
+
+    # rownames = dat.columns.values
+    fig, ax_metabs, ax_side, right, pos = plot_heatmap('metabs', rownames, fig, ax_metabs, ax_side, dl,
+                                                       cmap_heat="vlag", cmap_sig='gold')
+    # df_side = make_side_heatmap('metabs', rownames, fig, ax_side_strip,
+    #                             path_to_save, colormap = 'PRGn', plot_padj = True)
+
+    ax_metabs[0].axes.get_yaxis().set_visible(True)
+    set_font_sizes(None, {'font': 4.5})
+    ax_metabs[0].set_yticks(np.arange(len(rownames)))
+
+    # slab = get_rownames(rownames)
+    ax_metabs[0].set_yticklabels(rownames, fontsize=10)
+    ax_metabs[0].tick_params('both', length=0, which='major')
+
+    ax_dendro.set_frame_on(False)
+    ax_dendro.axes.get_xaxis().set_visible(False)
+    ax_dendro.axes.get_yaxis().set_visible(False)
+
+    set_font_sizes(None, {'font': 8})
+    arr_x = 0.96
+    arr_y = 0.08
+    # cbaxes = fig.add_axes([arr_x + .08, -.2, 0.04, 0.45])
+    # cbaxes.set_xlabel('FDR', labelpad = 5, loc = 'left')
+    # cb = fig.colorbar(right, cax = cbaxes)
+    # # cbaxes.set_yticklabels([r'$10^{-24}$',r'$10^{-18}$',r'$10^{-12}$',r'$10^{-6}$','1'])
+    # cbaxes.xaxis.set_label_position('top')
+
+    cbaxes2 = fig.add_axes([arr_x + .081, 0.13, 0.032, 0.45])
+    cb2 = fig.colorbar(pos, cax=cbaxes2)
+    cbaxes2.set_xlabel('Standardized\nMetabolite\nLevels', loc='center')
+    # cbaxes2.set_yticklabels([0,10,r'$10^{2}$',r'$10^{3}$',r'$10^{4}$'])
+    cbaxes2.xaxis.set_label_position('top')
+    fig.savefig(path_to_save + 'output_figures/Fig3/metabs_sm_005.pdf', bbox_inches='tight')

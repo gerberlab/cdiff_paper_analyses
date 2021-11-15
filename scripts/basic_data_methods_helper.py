@@ -13,7 +13,6 @@ from sklearn.manifold import MDS
 import scipy
 from sklearn.decomposition import PCA
 from helper import *
-from heatmaps_helper import *
 
 # define an object that will be used by the legend
 class MulticolorPatch(object):
@@ -155,7 +154,7 @@ def entropy_bw_grps(entropy_df, tmpts = [0,1,2], use_one_sided = True,
             continue
     pval_corr = {t: p for t, p in zip(tmpts, multipletests(list(pval.values()), alpha = 0.05, method = 'fdr_bh')[1])}
 
-    df_cl_v_re = pd.DataFrame({'Uncorrected': pval, 'Corrected': pval_corr})
+    df_cl_v_re = pd.DataFrame({'P-value': pval, 'FDR': pval_corr})
     return df_cl_v_re
 
 
@@ -200,15 +199,15 @@ def plot_entropy_boxplots(entropy_f, fig, ax, fig_title=None, week_colors=None, 
             key_n = key[0]
         else:
             key_n = key
-        box1 = ax.boxplot(val['Week ' + str(key)].loc[val['Outcome'] == 'Non-recurrer'], positions=[key_n - 0.1],
-                          whis=[5, 95], showfliers=False)
+        box1 = ax.boxplot(val['Week ' + str(key)].loc[val['Outcome'] == 'Non-recurrer'], positions=[key_n - 0.18],
+                          whis=[5, 95], showfliers=False, widths = 0.3)
         for element in ['boxes', 'whiskers', 'means', 'medians', 'caps']:
-            plt.setp(box1[element], color=cvec_nr, linewidth=2, alpha=0.75, zorder=-1)
+            plt.setp(box1[element], color=cvec_nr, linewidth=2, alpha=1, zorder=-1)
         #         plt.setp(box1['fliers'], color = False, linewidth = 0, alpha = 1, zorder = -1)
-        box2 = ax.boxplot(val['Week ' + str(key)].loc[val['Outcome'] == 'Recurrer'], positions=[key_n + .1],
-                          whis=[5, 95], showfliers=False)
+        box2 = ax.boxplot(val['Week ' + str(key)].loc[val['Outcome'] == 'Recurrer'], positions=[key_n + .18],
+                          whis=[5, 95], showfliers=False, widths = 0.3)
         for element in ['boxes', 'whiskers', 'means', 'medians', 'caps']:
-            plt.setp(box2[element], color=cvec_r, linewidth=2, alpha=0.75, zorder=-1)
+            plt.setp(box2[element], color=cvec_r, linewidth=2, alpha=1, zorder=-1)
 
     m1 = {}
     m2 = {}
@@ -233,16 +232,16 @@ def plot_entropy_boxplots(entropy_f, fig, ax, fig_title=None, week_colors=None, 
                 keys = np.array(keys)
                 #             else:
                 # #                 ax.plot(keys+.08, vals, '*',ms = 10,c = 'r', alpha = 0.1)
-                ax.scatter(key + .08 + np.random.uniform(-1, 1) * .05, val, marker='o', s=20,
-                           color=cvec_r, edgecolors="black", alpha=0.65)
+                ax.scatter(key + .18 + np.random.uniform(-1, 1) * .05, val, marker='o', s=20,
+                           color=cvec_r, alpha=0.5)
             elif df_to_check['Outcome'][pt] == 'Non-recurrer':
                 cvec_nr = colors[str(key) + 'Non-recurrer']
                 c_nrec.extend(keys)
                 keys = np.array(keys)
                 #             else:
                 #                 ax.plot(keys - .08, vals, '*',ms = 10,c = 'g', alpha = 0.1)
-                ax.scatter(key - .08 + np.random.uniform(-1, 1) * .05, val, marker='o', s=20,
-                           color=cvec_nr, edgecolors="black", alpha=0.65, zorder=3)
+                ax.scatter(key - .18 + np.random.uniform(-1, 1) * .05, val, marker='o', s=20,
+                           color=cvec_nr, alpha=0.5, zorder=3)
 
     ymin, ymax = ax.get_ylim()
     ax.set_ylim([ymin, ymax])
@@ -275,19 +274,19 @@ def plot_entropy_boxplots(entropy_f, fig, ax, fig_title=None, week_colors=None, 
     h, l = [], []
     keys = entropy_f.keys()
     if week_colors is None:
-        for re in ['Recurrer', 'Non-recurrer']:
+        for re_lab, re in zip(['R','NR'],['Recurrer', 'Non-recurrer']):
             h.append(MulticolorPatch([colors[str(key) + re] for key in keys], [markers[re] for key in keys]))
-            l.append(re)
+            l.append(re_lab)
 
         fig.legend(h, l,
                    handler_map={MulticolorPatch: MulticolorPatchHandler()})
     else:
         a1 = ax.scatter([], [], marker='o', s=50,
-                        color=week_colors['Recurrer'], edgecolors="black", alpha=0.65)
+                        color=week_colors['Recurrer'], alpha=0.65)
         a2 = ax.scatter([], [], marker='o', s=50,
-                        color=week_colors['Non-recurrer'], edgecolors="black", alpha=0.65)
+                        color=week_colors['Non-recurrer'], alpha=0.65)
 
-        ax.legend([a1, a2], ['Recurrer', 'Non-recurrer'], loc='upper right')
+        ax.legend([a1, a2], ['R', 'NR'], loc='upper right')
     return fig, ax
 
 
@@ -440,7 +439,7 @@ def pcoa_custom(x, metric = 'braycurtis', metric_mds = True):
     return principalDf, variance, dist_mat
 
 
-def univariate_w_chi2(x, targets, method = 'ranksum', cutoff=.05):
+def univariate_w_chi2(x, targets, method = 'ranksum', cutoff=.05, chi_sqr = False):
     if isinstance(targets[0], str):
         targets = (np.array(targets) == 'Recurrer').astype('float')
     else:
@@ -451,7 +450,7 @@ def univariate_w_chi2(x, targets, method = 'ranksum', cutoff=.05):
     direction = []
     for i in range(x.shape[1]):
 
-        if len(np.unique(x.iloc[:,i]))<=3 or (x.iloc[:,i].dtypes!=int and x.iloc[:,i].dtypes!=float):
+        if (len(np.unique(x.iloc[:,i]))<=3 or (x.iloc[:,i].dtypes!=np.int and x.iloc[:,i].dtypes!=np.float64)) and chi_sqr:
             xcat = x.iloc[:,i]
             vals = np.unique(xcat)
             tab = pd.crosstab(index = xcat, columns = targets)

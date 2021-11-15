@@ -79,7 +79,10 @@ args = parser.parse_args()
 if 99 in args.weeks:
     args.weeks.remove(99)
     args.weeks.append([1,1.5,2])
-f_folder = 'PredictiveAnalysisResults'
+if args.o:
+    f_folder = args.o
+else:
+    f_folder = 'PredictiveAnalysisResults'
 if not os.path.isdir(f_folder):
     os.mkdir(f_folder)
 for model in args.models:

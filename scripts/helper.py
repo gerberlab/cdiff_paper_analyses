@@ -12,8 +12,6 @@ from collections import defaultdict
 import pickle as pkl
 from datetime import datetime
 from statsmodels.stats.multitest import multipletests
-from heatmaps_helper import *
-from basic_data_methods_helper import *
 
 def make_one_hot(x,l=None):
     if l is None:
