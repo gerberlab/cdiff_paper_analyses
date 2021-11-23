@@ -4,7 +4,7 @@ This repository can be used to repeat the analyses and reproduce figures publish
 
 To repeat all analyses by scratch, re-run predictive analyses.  This analysis will take time and it is recommended you use a cluster to take advantage of parallel computing.
 
-To repeat all other analyses and reproduce figures, download results of predictive analysis from Zotero (link) and skip to section 2, Data analyses
+To repeat all other analyses and reproduce figures, download results of predictive analysis from Zenodo (https://doi.org/10.5281/zenodo.5718584) and skip to section 2, Data analyses
 
 ## 1. Predictive analysis
 ____
