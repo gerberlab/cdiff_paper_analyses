@@ -11,7 +11,8 @@ phylo_placement_filt_01
 phylo_placement_filt_005
 supplemental_figures
 univariate_analysis
-scripts/intputs/2020*
+scripts/intputs/20200120_HumanCarbonSourceMap.csv
+scripts/inputs/20200120_HumanCarbonSourceMap.xlsx
 scripts/inputs/bile_acids.csv
 scripts/inputs/pt*
 scripts/inputs/DEseq2
