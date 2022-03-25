@@ -10,7 +10,7 @@ class dataLoader():
             filename_toxin = 'Toxin B and C. difficile Isolation Results.xlsx',
                  # filename_CSgps = '20200120_HumanCarbonSourceMap.xlsx',
                  filename_scfa = 'PrecisionSCFAResultsHumanStool.xlsx',
-                 filename_demo = 'pt_demographics_full.xlsx',
+                 filename_demo = 'pt_demographic_data.xlsx',
                  pt_perc = {'metabs': .25, '16s': .1, 'scfa': 0, 'toxin':0},
                  meas_thresh = {'metabs': 0, '16s': 10, 'scfa': 0, 'toxin':0},
                  var_perc={'metabs': 50, '16s': 5, 'scfa': 0, 'toxin':0}, pt_tmpts = 1):
@@ -28,21 +28,27 @@ class dataLoader():
         self.var_perc = var_perc
         self.pt_tmpts = pt_tmpts
 
-        df_demo = pd.read_excel(path + '/' + filename_demo, sheet_name = 'Sheet1', index_col = 0)
-        for col in df_demo.columns.values:
-            df_demo = df_demo.rename(columns={col: col.split('  ')[0]})
-            df_demo = df_demo.rename(columns={col: col.split(' (')[0]})
+        try:
 
-        dem_covars = ['Age', 'Sex', 'Race', 'BMI','Smoking status','Prior PPI use', 'Drug', 'Toxin +']
-        clin_covars  = ['Age', 'Prior PPI use', 'Drug', 'Toxin +']
+            df_demo = pd.read_excel(path + '/' + filename_demo, sheet_name = 'Sheet1', index_col = 0)
+            for col in df_demo.columns.values:
+                df_demo = df_demo.rename(columns={col: col.split('  ')[0]})
+                df_demo = df_demo.rename(columns={col: col.split(' (')[0]})
 
-        self.demographics = df_demo[dem_covars]
-        self.clinical = df_demo[clin_covars]
-        self.demographics.index = self.demographics.index.astype(str)
-        self.clinical.index = self.clinical.index.astype(str)
-        self.demographics.Race = self.demographics.Race.replace('Black',0).replace('Hispanic',1).replace('White',2)
-        self.demographics.Drug = self.demographics.Drug.replace('vanc', 0).replace('flagyl', 1)
-        self.clinical.Drug = self.clinical.Drug.replace('vanc', 0).replace('flagyl', 1)
+            # dem_covars_to_drop = ['Age', 'Sex', 'Race', 'BMI','Prior PPI use', 'Drug', 'Toxin +', 'Previous CDI dx?','Smoking status',
+            #               'History of IBS?','Ursodiol']
+            clin_covars  = ['Age', 'Prior PPI use', 'Drug', 'Toxin +']
+
+            self.demographics = df_demo
+            self.clinical = df_demo[clin_covars]
+            self.demographics.index = self.demographics.index.astype(str)
+            self.clinical.index = self.clinical.index.astype(str)
+            self.demographics.Race = self.demographics.Race.replace('Black',0).replace('Hispanic',1).replace('White',2)
+            self.demographics.Drug = self.demographics.Drug.replace('vanc', 0).replace('flagyl', 1)
+            self.clinical.Drug = self.clinical.Drug.replace('vanc', 0).replace('flagyl', 1)
+
+        except:
+            print('No patient demographic/clinical data available due to identifiability')
 
         self.load_cdiff_data()
         # self.load_ba_data()

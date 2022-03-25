@@ -11,7 +11,12 @@ phylo_placement_filt_01
 phylo_placement_filt_005
 supplemental_figures
 univariate_analysis
-scripts/inputs
+scripts/intputs/2020*
+scripts/inputs/bile_acids.csv
+scripts/inputs/pt*
+scripts/inputs/DEseq2
+scripts/inputs/MS FE BANEG PeakPantheR
+scripts/inputs/Toxin B*
 dada2/raw_data
 Workspace.ipynb
 basic_data_methods.py
