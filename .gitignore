@@ -23,6 +23,7 @@ scripts/inputs/DEseq2_covariate
 scripts/inputs/DEseq2_drug
 scripts/inputs/MS FE BANEG PeakPantheR
 scripts/inputs/Toxin B*
+scripts/inputs/DemographicData.xlsx
 dada2/raw_data
 Workspace.ipynb
 basic_data_methods.py
