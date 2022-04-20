@@ -65,8 +65,8 @@ def make_side_heatmap(key, rownames,
             test = 'deseq2'
             pname = 'padj'
         else:
-            test = 'ttest'
-            pname = 'BH corrected'
+            test = 'OLS'
+            pname = 'FDR, Outcome'
         univ_anal = pd.read_csv(path_to_univariate_analysis + '/' + key + '/' + test + '_' + key + str(week) +
                                 '.csv', index_col=0)
         #         df[week] = univ_anal.loc[univ_anal[pname]<0.1]
@@ -79,7 +79,8 @@ def make_side_heatmap(key, rownames,
         elif 'log2fold' in univ_anal.columns.values:
             test_stat_lab = 'log2fold'
         else:
-            print(univ_anal.columns.values)
+            test_stat_lab = 'coef, outcome'
+
         if 'BH corrected' in univ_anal.columns.values:
             p_lab = 'BH corrected'
         elif 'BH Corrected' in univ_anal.columns.values:
@@ -87,7 +88,7 @@ def make_side_heatmap(key, rownames,
         elif 'padj' in univ_anal.columns.values:
             p_lab = 'padj'
         else:
-            print(univ_anal.columns.values)
+            p_lab = 'FDR, Outcome'
 
         if plot_padj:
             data_to_plot = univ_anal[[p_lab, test_stat_lab]]
@@ -252,7 +253,7 @@ def make_metab_dendrogram(df_dendro, data, fig, ax, custom_order, skip_offset = 
 
 def plot_heatmap(key, rownames, fig, ax_heat, ax_side, dl, figsize=12 * 10, weeks=[0, 1, 2],
                  dtype='data',
-                 path_to_univariate_analysis = '/Users/jendawk/Dropbox (MIT)/C Diff Recurrence Paper/Analyses/univariate_analysis/',
+                 path_to_univariate_analysis = '/Users/jendawk/Dropbox (MIT)/C Diff Recurrence Paper/Analyses/univariate_analysis_control/',
                  path_to_save_data='/Users/jendawk/Dropbox (MIT)/C Diff Recurrence Paper/Main Figures/Figure Data/',
                  cmap_heat='vlag', cmap_sig='tab:purple'):
     df_side = make_side_heatmap(key, rownames,
@@ -353,6 +354,8 @@ def plot_heatmap(key, rownames, fig, ax_heat, ax_side, dl, figsize=12 * 10, week
 
         if 't-stat' in df_side[i].columns.values:
             df_side[i]['t-stat'] = df_side[i]['t-stat'].fillna(0)
+        elif 'coef, outcome' in df_side[i].columns.values:
+            df_side[i]['coef, outcome'] = df_side[i]['coef, outcome'].fillna(0)
         else:
             df_side[i].iloc[:, -1:] = df_side[i].iloc[:, -1:].fillna(0)
 
@@ -372,8 +375,9 @@ def plot_heatmap(key, rownames, fig, ax_heat, ax_side, dl, figsize=12 * 10, week
             test_stat_lab = 'test statistic'
         elif 'log2fold' in df_side[i].columns.values:
             test_stat_lab = 'log2fold'
-        else:
-            print(df_side[i].columns.values)
+        elif 'coef, outcome' in df_side[i].columns.values:
+            test_stat_lab = 'coef, outcome'
+
         if 'BH corrected' in df_side[i].columns.values:
             p_lab = 'BH corrected'
         elif 'BH Corrected' in df_side[i].columns.values:
@@ -381,7 +385,7 @@ def plot_heatmap(key, rownames, fig, ax_heat, ax_side, dl, figsize=12 * 10, week
         elif 'padj' in df_side[i].columns.values:
             p_lab = 'padj'
         else:
-            print(df_side[i].columns.values)
+            p_lab = 'FDR, Outcome'
         labels = df_side[i][test_stat_lab].copy()
         labels[(df_side[i][test_stat_lab].astype('float64') < 0) * (df_side[i][p_lab].astype('float64') <= 0.05)] = '\u2193'
         labels[(df_side[i][test_stat_lab].astype('float64') > 0) * (df_side[i][p_lab].astype('float64') <= 0.05)] = '\u2191'

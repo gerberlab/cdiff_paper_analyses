@@ -513,7 +513,7 @@ def univariate_w_chi2(x, targets, method = 'ranksum', cutoff=.05, chi_sqr = Fals
     pval[np.isnan(pval)] = 1
     # corrected, alpha = bh_corr(np.array(pval), .05)
 
-    # reject, corrected, a1, a2 = multipletests(pval, alpha=.05, method='fdr_bh')
-    df = pd.DataFrame(np.vstack((pval, teststat, direction, methods)).T, columns=[
-        'P_Val', 'test statistic','direction','method'], index=x.columns.values)
+    reject, corrected, a1, a2 = multipletests(pval, alpha=.05, method='fdr_bh')
+    df = pd.DataFrame(np.vstack((pval, corrected, teststat, direction, methods)).T, columns=[
+        'P_Val', 'BH corrected', 'test statistic','direction','method'], index=x.columns.values)
     return df.sort_values('P_Val', ascending=True)

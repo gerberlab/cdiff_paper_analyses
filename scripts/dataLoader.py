@@ -10,7 +10,7 @@ class dataLoader():
             filename_toxin = 'Toxin B and C. difficile Isolation Results.xlsx',
                  # filename_CSgps = '20200120_HumanCarbonSourceMap.xlsx',
                  filename_scfa = 'PrecisionSCFAResultsHumanStool.xlsx',
-                 filename_demo = 'pt_demographic_data.xlsx',
+                 filename_demo = 'DemographicData.xlsx',
                  pt_perc = {'metabs': .25, '16s': .1, 'scfa': 0, 'toxin':0},
                  meas_thresh = {'metabs': 0, '16s': 10, 'scfa': 0, 'toxin':0},
                  var_perc={'metabs': 50, '16s': 5, 'scfa': 0, 'toxin':0}, pt_tmpts = 1):
